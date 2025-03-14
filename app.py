@@ -1,17 +1,30 @@
 import streamlit as st
 import pandas as pd
-from snowflake.snowpark import Session  # ✅ Correct import
+from snowflake.snowpark import Session  
 from datetime import datetime
 
-# ✅ Ensure `st.set_page_config()` is the first Streamlit command
+# ✅ Set Streamlit page configuration
 st.set_page_config(
-    page_title="Editable Portfolio Performance Data",
+    page_title="Override Dashboard",
     page_icon="📊",
-    layout="wide"
+    layout="centered"
 )
 
-# Title with custom styling
-st.markdown("<h1 style='text-align: center; color: #1E88E5;'>Editable Portfolio Performance Data</h1>", unsafe_allow_html=True)
+# ✅ Title with styling
+st.markdown("<h1 style='text-align: center; color: #1E88E5;'>Override Dashboard</h1>", unsafe_allow_html=True)
+
+# ✅ Custom CSS to Highlight Editable Column
+st.markdown(
+    """
+    <style>
+        .highlight-editable {
+            background-color: #FFF3CD !important;  /* Light yellow background */
+            font-weight: bold;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # ✅ Snowflake connection parameters from Streamlit secrets
 try:
@@ -30,142 +43,103 @@ try:
 
 except Exception as e:
     st.error(f"❌ Failed to connect to Snowflake: {e}")
-    st.stop()  # Stop execution if connection fails
+    st.stop()
 
-# Function to fetch data from Snowflake
-def fetch_data(table_name):
-    try:
-        df = session.table(table_name).to_pandas()
-        df.columns = [col.upper() for col in df.columns]
-        return df
-    except Exception as e:
-        st.error(f"❌ Error fetching data from {table_name}: {e}")
-        return pd.DataFrame()
+# ✅ Fetch available modules from Override_Ref
+def fetch_modules():
+    df = session.table("Override_Ref").to_pandas()
+    df.columns = [col.upper() for col in df.columns]
+    return [f"Module-{int(module)}" for module in df['MODULE'].unique()] if not df.empty else []
 
-# Function to fetch override reference data
-def fetch_override_ref_data(selected_module=None, selected_table=None):
-    try:
-        df = session.table("Override_Ref").to_pandas()
-        df.columns = [col.upper() for col in df.columns]
+available_modules = fetch_modules()
 
-        if selected_module:
-            module_num = int(selected_module.split('-')[1])
-            df = df[df['MODULE'] == module_num]
-            
-            if selected_table:
-                df = df[df['SOURCE_TABLE'] == selected_table]
-                
-        return df
-    except Exception as e:
-        st.error(f"❌ Error fetching data from Override_Ref: {e}")
-        return pd.DataFrame()
+# ✅ Read module number from URL parameters
+query_params = st.query_params
+module_from_url = query_params.get("module", None)
 
-# Function to update a row in the source table
-def update_source_table_row(source_table, as_of_date, portfolio, portfolio_segment, category, description, market_value, editable_column, editable_value):
-    try:
-        update_sql = f"""
-            UPDATE {source_table}
-            SET
-                MARKET_VALUE = '{market_value}',
-                DESCRIPTION = '{description}',
-                {editable_column} = '{editable_value}'
-            WHERE
-                AS_OF_DATE = '{as_of_date}' AND
-                PORTFOLIO = '{portfolio}' AND
-                PORTFOLIO_SEGMENT = '{portfolio_segment}' AND
-                CATEGORY = '{category}'
-        """
-        session.sql(update_sql).collect()
-        st.success(f"✅ Successfully updated row in {source_table}")
+default_module = f"Module-{module_from_url}" if module_from_url and f"Module-{module_from_url}" in available_modules else None
 
-    except Exception as e:
-        st.error(f"❌ Error updating row in {source_table}: {e}")
+# ✅ Module selection
+#st.write("### Selected Module")
+if default_module:
+    st.text_input("Module", default_module, disabled=True)
+    selected_module = default_module
+else:
+    selected_module = st.selectbox("Select Module", available_modules)
 
-# Function to insert a row in the target table with RECORD_FLAG = 'O'
-def insert_into_target_table(target_table, as_of_date, portfolio, portfolio_segment, category, description, market_value):
-    try:
-        formatted_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        insert_sql = f"""
-            INSERT INTO {target_table} (AS_OF_DATE, PORTFOLIO, PORTFOLIO_SEGMENT, CATEGORY, DESCRIPTION, MARKET_VALUE, AS_AT_DATE, RECORD_FLAG)
-            VALUES ('{as_of_date}', '{portfolio}', '{portfolio_segment}', '{category}', '{description}', '{market_value}', '{formatted_ts}', 'O')
-        """
-        session.sql(insert_sql).collect()
-        st.success(f"✅ Successfully inserted data into {target_table} with RECORD_FLAG = 'O'")
-
-    except Exception as e:
-        st.error(f"❌ Error inserting values into {target_table}: {e}")
-
-# Function to update and insert data
-def update_and_insert(source_table, target_table_name, edited_df, original_df, editable_column):
-    try:
-        edited_rows = edited_df[(edited_df[editable_column] != original_df[editable_column])]
-        
-        for index, row in edited_rows.iterrows():
-            as_of_date = row["AS_OF_DATE"].strftime("%Y-%m-%d")
-            portfolio = row["PORTFOLIO"]
-            portfolio_segment = row["PORTFOLIO_SEGMENT"]
-            category = row["CATEGORY"]
-            description = row["DESCRIPTION"]
-            market_value = row["MARKET_VALUE"]
-            editable_value = row[editable_column]
-
-            update_source_table_row(source_table, as_of_date, portfolio, portfolio_segment, category, description, market_value, editable_column, editable_value)
-            insert_into_target_table(target_table_name, as_of_date, portfolio, portfolio_segment, category, description, market_value)
-
-        st.success("✅ Updated the data successfully!")
-    except Exception as e:
-        st.error(f"❌ Error updating and inserting data: {e}")
-
-# Main app
-override_ref_df = fetch_data("Override_Ref")
-available_modules = [f"Module-{int(module)}" for module in override_ref_df['MODULE'].unique()] if not override_ref_df.empty else []
-if not available_modules:
-    st.warning("⚠️ No modules found in Override_Ref table.")
-
-selected_module = st.selectbox("Select Module", available_modules)
+# ✅ Fetch override ref data for the selected module
+def fetch_override_ref_data(selected_module):
+    df = session.table("Override_Ref").to_pandas()
+    df.columns = [col.upper() for col in df.columns]
+    module_num = int(selected_module.split('-')[1])
+    return df[df['MODULE'] == module_num] if not df.empty else pd.DataFrame()
 
 module_tables_df = fetch_override_ref_data(selected_module)
 available_tables = module_tables_df['SOURCE_TABLE'].unique() if not module_tables_df.empty else []
 selected_table = st.selectbox("Select Table", available_tables)
 
+# ✅ Get target table and editable column
 table_info_df = module_tables_df[module_tables_df['SOURCE_TABLE'] == selected_table] if not module_tables_df.empty else pd.DataFrame()
-if not table_info_df.empty:
-    target_table_name = table_info_df['TARGET_TABLE'].iloc[0]
-    
-    # Fetch the editable column name dynamically from Override_Ref table
-    editable_column = table_info_df['SOURCE_TABLE'].iloc[0]  # Assuming editable column is dynamically fetched based on table configuration
 
+if not table_info_df.empty:
+    target_table_name = table_info_df['TARGET_TABLE'].iloc[0].upper()
+    editable_column = table_info_df['EDITABLE_COLUMN'].iloc[0].upper()  # Editable column from Override_Ref
+
+    # ✅ Display Data Tabs
     tab1, tab2 = st.tabs(["Source Data", "Overridden Values"])
 
     with tab1:
         st.subheader(f"Source Data from {selected_table}")
-        source_df = fetch_data(selected_table)
-        
+        source_df = session.table(selected_table).to_pandas()
+
         if not source_df.empty:
-            edited_df = source_df.copy()
-            
-            # Create a text input for the editable column only
-            for index in range(len(source_df)):
-                edited_value = st.text_input(f"Edit {editable_column} for row {index+1}", value=source_df.at[index, editable_column])
-                edited_df.at[index, editable_column] = edited_value
-            
-            if st.button("Submit Updates", type="primary"):
-                update_and_insert(selected_table, target_table_name, edited_df, source_df, editable_column)
+            # Ensure editable column is in DataFrame
+            if editable_column not in source_df.columns:
+                st.error(f"❌ Editable column '{editable_column}' not found in {selected_table}.")
+            else:
+                # ✅ Apply custom CSS class to highlight editable column
+                def highlight_column(val):
+                    return "highlight-editable" if val.name == editable_column else ""
+
+                styled_df = source_df.style.applymap(highlight_column, subset=[editable_column])
+
+                # ✅ Display the table with editable column highlighted              
+                # Make only the editable column modifiable
+                edited_df = st.data_editor(
+                    source_df,
+                    disabled=[col for col in source_df.columns if col != editable_column], 
+                    num_rows="dynamic",
+                    use_container_width=True
+                )
+
+                # ✅ Submit Updates Button
+                if st.button("Submit Updates", type="primary"):
+                    edited_rows = edited_df[source_df[editable_column] != edited_df[editable_column]]
+                    if not edited_rows.empty:
+                        edited_rows['AS_AT_DATE'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Add timestamp
+                        edited_rows['RECORD_FLAG'] = 'O'  # Mark as overridden
+
+                        # Insert edited rows into target table
+                        session.write_pandas(edited_rows, target_table_name, overwrite=False)
+                        st.success("✅ Edited values inserted as new rows successfully!")
+                    else:
+                        st.info("ℹ️ No changes detected.")
+
         else:
             st.info(f"ℹ️ No data available in {selected_table}.")
 
     with tab2:
         st.subheader(f"Overridden Values from {target_table_name}")
-        overridden_df = fetch_data(target_table_name)
+        overridden_df = session.table(target_table_name).to_pandas()
         overridden_df = overridden_df[overridden_df['RECORD_FLAG'] == 'O'] if not overridden_df.empty else pd.DataFrame()
-        
         if not overridden_df.empty:
             st.dataframe(overridden_df, use_container_width=True)
         else:
             st.info(f"ℹ️ No overridden values with RECORD_FLAG = 'O' in {target_table_name}.")
+
 else:
     st.error(f"❌ No target table configured for {selected_table} in Override_Ref.")
 
-# Footer
+# ✅ Footer
 st.markdown("---")
-st.caption("Portfolio Performance Override System • Last updated: March 12, 2025")  
+st.caption("Portfolio Performance Override System • Last updated: March 12, 2025")
