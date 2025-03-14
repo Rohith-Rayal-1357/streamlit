@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
-from snowflake.snowpark import Session  # ✅ Correct import
+from snowflake.snowpark import Session
 from datetime import datetime
 
-# ✅ Ensure `st.set_page_config()` is the first Streamlit command
+# Set page config
 st.set_page_config(
     page_title="Editable Portfolio Performance Data",
     page_icon="📊",
@@ -13,7 +13,7 @@ st.set_page_config(
 # Title with custom styling
 st.markdown("<h1 style='text-align: center; color: #1E88E5;'>Editable Portfolio Performance Data</h1>", unsafe_allow_html=True)
 
-# ✅ Snowflake connection parameters from Streamlit secrets
+# Snowflake connection parameters from Streamlit secrets
 try:
     connection_parameters = {
         "account": st.secrets["SNOWFLAKE_ACCOUNT"],
@@ -24,7 +24,7 @@ try:
         "schema": st.secrets["SNOWFLAKE_SCHEMA"],
     }
 
-    # ✅ Create a Snowpark session
+    # Create a Snowpark session
     session = Session.builder.configs(connection_parameters).create()
     st.success("✅ Successfully connected to Snowflake!")
 
@@ -61,13 +61,12 @@ def fetch_override_ref_data(selected_module=None, selected_table=None):
         return pd.DataFrame()
 
 # Function to update a row in the source table
-def update_source_table_row(source_table, as_of_date, portfolio, portfolio_segment, category, description, market_value):
+def update_source_table_row(source_table, as_of_date, portfolio, portfolio_segment, category, market_value):
     try:
         update_sql = f"""
             UPDATE {source_table}
             SET
-                MARKET_VALUE = '{market_value}',
-                DESCRIPTION = '{description}'
+                MARKET_VALUE = '{market_value}'
             WHERE
                 AS_OF_DATE = '{as_of_date}' AND
                 PORTFOLIO = '{portfolio}' AND
@@ -95,18 +94,17 @@ def insert_into_target_table(target_table, as_of_date, portfolio, portfolio_segm
         st.error(f"❌ Error inserting values into {target_table}: {e}")
 
 # Function to update and insert data
-def update_and_insert(source_table, target_table_name, edited_df, original_df):
+def update_and_insert(source_table, target_table_name, source_df, edited_market_values):
     try:
-        edited_rows = edited_df[(edited_df != original_df).any(axis=1)]
-        for index, row in edited_rows.iterrows():
+        for index, row in source_df.iterrows():
             as_of_date = row["AS_OF_DATE"].strftime("%Y-%m-%d")
             portfolio = row["PORTFOLIO"]
             portfolio_segment = row["PORTFOLIO_SEGMENT"]
             category = row["CATEGORY"]
             description = row["DESCRIPTION"]
-            market_value = row["MARKET_VALUE"]
+            market_value = edited_market_values[index]
 
-            update_source_table_row(source_table, as_of_date, portfolio, portfolio_segment, category, description, market_value)
+            update_source_table_row(source_table, as_of_date, portfolio, portfolio_segment, category, market_value)
             insert_into_target_table(target_table_name, as_of_date, portfolio, portfolio_segment, category, description, market_value)
 
         st.success("✅ Updated the data successfully!")
@@ -135,9 +133,21 @@ if not table_info_df.empty:
         st.subheader(f"Source Data from {selected_table}")
         source_df = fetch_data(selected_table)
         if not source_df.empty:
-            edited_df = st.data_editor(source_df, num_rows="dynamic", use_container_width=True)
+            # Display data
+            st.dataframe(source_df, use_container_width=True)
+            
+            # Create editable inputs for MARKET_VALUE
+            edited_market_values = []
+            for index, row in source_df.iterrows():
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.write(f"{row['AS_OF_DATE']} - {row['PORTFOLIO']} - {row['CATEGORY']}")
+                with col2:
+                    edited_market_value = st.number_input(f"Market Value for {row['AS_OF_DATE']} - {row['PORTFOLIO']}", value=float(row['MARKET_VALUE']), key=f"market_value_{index}")
+                    edited_market_values.append(edited_market_value)
+            
             if st.button("Submit Updates", type="primary"):
-                update_and_insert(selected_table, target_table_name, edited_df, source_df)
+                update_and_insert(selected_table, target_table_name, source_df, edited_market_values)
         else:
             st.info(f"ℹ️ No data available in {selected_table}.")
 
