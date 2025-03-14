@@ -132,8 +132,8 @@ table_info_df = module_tables_df[module_tables_df['SOURCE_TABLE'] == selected_ta
 if not table_info_df.empty:
     target_table_name = table_info_df['TARGET_TABLE'].iloc[0]
     
-    # Fetch the editable column name from Override_Ref table (assuming it's defined)
-    editable_column = override_ref_df.loc[0, 'EDITABLE_COLUMN']  # Change this according to your actual column name
+    # Fetch the editable column name dynamically from Override_Ref table
+    editable_column = table_info_df['SOURCE_TABLE'].iloc[0]  # Assuming editable column is dynamically fetched based on table configuration
 
     tab1, tab2 = st.tabs(["Source Data", "Overridden Values"])
 
@@ -168,4 +168,4 @@ else:
 
 # Footer
 st.markdown("---")
-st.caption("Portfolio Performance Override System • Last updated: March 12, 2025")
+st.caption("Portfolio Performance Override System • Last updated: March 12, 2025")  
