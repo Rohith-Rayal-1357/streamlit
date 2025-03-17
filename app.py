@@ -5,40 +5,52 @@ from datetime import datetime
 
 # Page configuration
 st.set_page_config(
-    page_title="Override Dashboard",
+    page_title="Editable Data Override App",
     page_icon="📊",
-    layout="wide"
+    layout="centered"  # Set the layout to centered
 )
 
 # Title with custom styling
 st.markdown("<h1 style='text-align: center; color: #1E88E5;'>Override Dashboard</h1>", unsafe_allow_html=True)
 
+# Custom CSS to highlight the editable column
+st.markdown(
+    """
+    <style>
+        .highlight-editable {
+            background-color: #FFF3CD !important;  /* Light yellow background */
+            font-weight: bold;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# ✅ Snowflake connection parameters from Streamlit secrets
+# Streamlit Secrets to fetch Snowflake connection parameters
 try:
     connection_parameters = {
-        "account": st.secrets["SNOWFLAKE_ACCOUNT"],
-        "user": st.secrets["SNOWFLAKE_USER"],
-        "password": st.secrets["SNOWFLAKE_PASSWORD"],
-        "warehouse": st.secrets["SNOWFLAKE_WAREHOUSE"],
-        "database": st.secrets["SNOWFLAKE_DATABASE"],
-        "schema": st.secrets["SNOWFLAKE_SCHEMA"],
+        "account": st.secrets["snowflake"]["account"],
+        "user": st.secrets["snowflake"]["user"],
+        "password": st.secrets["snowflake"]["password"],
+        "warehouse": st.secrets["snowflake"]["warehouse"],
+        "database": st.secrets["snowflake"]["database"],
+        "schema": st.secrets["snowflake"]["schema"],
     }
 
-    # ✅ Create a Snowpark session
-    session = Session.builder.configs(connection_parameters).create()
-    st.success("✅ Successfully connected to Snowflake!")
+    # Get active Snowflake session using the connection parameters
+    session = get_active_session()
+    if session is None:
+        st.error("Unable to establish a Snowflake session. Please ensure you are running this app within a Snowflake environment.")
+        st.stop()
 
-# Get active Snowflake session
-session = get_active_session()
-if session is None:
-    st.error("Unable to establish a Snowflake session. Please ensure you are running this app within a Snowflake environment.")
+except Exception as e:
+    st.error(f"❌ Failed to retrieve Snowflake connection details from secrets: {e}")
     st.stop()
 
 # Function to fetch data based on the table name
 def fetch_data(table_name):
     try:
-    	        df = session.table(table_name).to_pandas()
+        df = session.table(table_name).to_pandas()
         df.columns = [col.upper() for col in df.columns]
         return df
     except Exception as e:
@@ -74,8 +86,6 @@ def update_source_table_row(source_table, primary_key_values, editable_column, n
         # Execute the UPDATE statement
         session.sql(update_sql).collect()
 
-        #st.success(f"Successfully updated row in {source_table} where {where_clause}")
-
     except Exception as e:
         st.error(f"Error updating row in {source_table}: {e}")
 
@@ -92,7 +102,6 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
         """
 
         session.sql(insert_sql).collect()
-        #st.success(f"Successfully inserted data to table {target_table} with RECORD_FLAG = 'O'")
     except Exception as e:
         st.error(f"Error inserting values into {target_table}: {e}")
 
@@ -127,7 +136,7 @@ if not module_tables_df.empty:
         editable_columns = table_info_df['EDITABLE_COLUMN'].unique()
 
         # Select editable column
-        selected_column = st.selectbox("Editable_column", editable_columns)
+        selected_column = st.selectbox("Editable Column", editable_columns)
         selected_column_upper = selected_column.upper()
 
         # Fetch primary key columns dynamically from source table
