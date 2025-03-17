@@ -118,7 +118,7 @@ module_tables_df = fetch_override_ref_data(selected_module)
 
 # Check if module data exists for the selected module
 if module_tables_df.empty:
-    st.error(f"Module {selected_module} does not exist in Override_Ref. Please ensure the module exists.")
+    st.error(f"Module {selected_module} does not exist in Override_Ref. No data to display.")
     st.stop()
 
 module_name = module_tables_df['MODULE_NAME'].iloc[0]
