@@ -95,8 +95,7 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
 
 # Main app
 # Retrieve module from query parameters (if exists)
-query_params = st.experimental_get_query_params()
-selected_module = query_params.get("module", [None])[0]
+selected_module = st.query_params.get("module", [None])[0]
 
 if not selected_module:
     st.warning("No module selected! Please use the Power BI button to select a module.")
