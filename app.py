@@ -92,161 +92,158 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
     except Exception as e:
         st.error(f"Error inserting values into {target_table}: {e}")
 
-
 # Main app logic
-def main():
-    # Retrieve the query parameters using the correct method
-    query_params = st.query_params
+# Retrieve the query parameters using the correct method
+query_params = st.query_params
 
-    # Check if the 'module' parameter exists in the URL
-    if 'module' in query_params:
-        selected_module = query_params['module'][0]  # Get the module from the URL
-    else:
-        selected_module = None  # No module is selected
+# Check if the 'module' parameter exists in the URL
+if 'module' in query_params:
+    selected_module = query_params['module'][0]  # Get the module from the URL
+else:
+    selected_module = None  # No module is selected
 
-    # Error handling: If no module is selected, display an error message and stop.
-    if selected_module is None:
-        st.error("Please select a module from the Power BI report.")
-        st.stop()
+# Error handling: If no module is selected, display an error message and stop.
+if selected_module is None:
+    st.error("Please select a module from the Power BI report.")
+    st.stop()
 
-    try:
-        selected_module = int(selected_module)  # Convert to integer
-    except ValueError:
-        st.error("Invalid module number. Please ensure the module number is an integer.")
-        st.stop()
+try:
+    selected_module = int(selected_module)  # Convert to integer
+except ValueError:
+    st.error("Invalid module number.  Please ensure the module number is an integer.")
+    st.stop()
 
-    # Fetch the module name AND TABLES every time the module changes
-    module_tables_df = fetch_override_ref_data(selected_module)
+# Fetch the module name
+module_tables_df = fetch_override_ref_data(selected_module)
+if not module_tables_df.empty:
+    module_name = module_tables_df['MODULE_NAME'].iloc[0]
+    st.markdown(f"<h3 style='text-align: center;'>Module: {module_name}</h3>", unsafe_allow_html=True)
+else:
+    st.error("Could not retrieve module name. Please check the Override_Ref table.")
+    st.stop()
 
-    if not module_tables_df.empty:
-        module_name = module_tables_df['MODULE_NAME'].iloc[0]
-        st.markdown(f"<h3 style='text-align: center;'>Module: {module_name}</h3>", unsafe_allow_html=True)
+# If a module is selected, show its corresponding data
+# Removed unnecessary if selected_module condition, as the app would have stopped if it wasn't selected
+# This ensures it continues to process data based on the valid module
+if not module_tables_df.empty:
+    available_tables = module_tables_df['SOURCE_TABLE'].unique()
 
-        available_tables = module_tables_df['SOURCE_TABLE'].unique()
+    # Select table within the module
+    selected_table = st.selectbox("Select Table", available_tables)
 
-        # Select table within the module
-        selected_table = st.selectbox("Select Table", available_tables)
+    # Filter Override_Ref data based on the selected table
+    table_info_df = module_tables_df[module_tables_df['SOURCE_TABLE'] == selected_table]
 
-        # Filter Override_Ref data based on the selected table
-        table_info_df = module_tables_df[module_tables_df['SOURCE_TABLE'] == selected_table]
+    if not table_info_df.empty:
+        target_table_name = table_info_df['TARGET_TABLE'].iloc[0]
+        # Fetch editable columns from table_info_df
+        editable_columns = table_info_df['EDITABLE_COLUMN'].unique()
 
-        if not table_info_df.empty:
-            target_table_name = table_info_df['TARGET_TABLE'].iloc[0]
-            # Fetch editable columns from table_info_df
-            editable_columns = table_info_df['EDITABLE_COLUMN'].unique()
+        # Select editable column
+        selected_column = st.selectbox("Editable Column", editable_columns, disabled=True)
+        st.markdown(f"### **Editable Column:** {selected_column.upper()}")  # Disabled selectbox
+        selected_column_upper = selected_column.upper()
 
-            # Select editable column
-            selected_column = st.selectbox("Editable Column", editable_columns, disabled=True)
-            st.markdown(f"### **Editable Column:** {selected_column.upper()}")  # Disabled selectbox
-            selected_column_upper = selected_column.upper()
+        # Fetch primary key columns dynamically from source table
+        primary_key_cols = {
+            'fact_portfolio_perf': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
+            'fact_income': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
+            'fact_msme': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
+            'fact_orders': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT, 'CATEGORY'],
+            'fact_customers': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
+        }.get(selected_table, [])
 
-            # Fetch primary key columns dynamically from source table
-            primary_key_cols = {
-                'fact_portfolio_perf': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
-                'fact_income': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
-                'fact_msme': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
-                'fact_orders': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
-                'fact_customers': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
-            }.get(selected_table, [])
+        if not primary_key_cols:
+            st.error("Primary key columns not defined for this table. Please update the code.")
+            st.stop()
 
-            if not primary_key_cols:
-                st.error("Primary key columns not defined for this table. Please update the code.")
-                st.stop()
+        # Split the data into two tabs
+        tab1, tab2 = st.tabs(["Source Data", "Overridden Values"])
 
-            # Split the data into two tabs
-            tab1, tab2 = st.tabs(["Source Data", "Overridden Values"])
+        with tab1:
+            st.subheader(f"Source Data from {selected_table}")
 
-            with tab1:
-                st.subheader(f"Source Data from {selected_table}")
+            # Fetch data at the beginning
+            source_df = fetch_data(selected_table)
+            if not source_df.empty:
+                # Make the dataframe editable using st.data_editor
+                edited_df = source_df.copy()
 
-                # Fetch data at the beginning
-                source_df = fetch_data(selected_table)
-                if not source_df.empty:
-                    # Make the dataframe editable using st.data_editor
-                    edited_df = source_df.copy()
+                # Apply a background color to the editable column
+                def highlight_editable_column(df, column_name):
+                    # Create a style for the entire dataframe
+                    styled_df = pd.DataFrame('', index=df.index, columns=df.columns)
+                    # Apply yellow background only to the selected column
+                    styled_df[column_name] = 'background-color: #FFFFE0'
+                    return styled_df
 
-                    # Apply a background color to the editable column
-                    def highlight_editable_column(df, column_name):
-                        # Create a style for the entire dataframe
-                        styled_df = pd.DataFrame('', index=df.index, columns=df.columns)
-                        # Apply yellow background only to the selected column
-                        styled_df[column_name] = 'background-color: #FFFFE0'
-                        return styled_df
+                # Disable editing for all columns except the selected editable column
+                disabled_cols = [col for col in edited_df.columns if col != selected_column_upper]
 
-                    # Disable editing for all columns except the selected editable column
-                    disabled_cols = [col for col in edited_df.columns if col != selected_column_upper]
+                styled_df = edited_df.style.apply(highlight_editable_column, column_name=selected_column_upper, axis=None)
 
-                    styled_df = edited_df.style.apply(highlight_editable_column, column_name=selected_column_upper, axis=None)
+                edited_df = st.data_editor(
+                    edited_df,  # Pass the original dataframe for editing
+                    key=f"data_editor_{selected_table}_{selected_column}",
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    disabled=disabled_cols
+                )
 
-                    edited_df = st.data_editor(
-                        edited_df,  # Pass the original dataframe for editing
-                        key=f"data_editor_{selected_table}_{selected_column}",
-                        num_rows="dynamic",
-                        use_container_width=True,
-                        disabled=disabled_cols
-                    )
+                # Submit button to update the source table and insert to the target table
+                if st.button("Submit Updates"):
+                    try:
+                        # Identify rows that have been edited
+                        changed_rows = edited_df[edited_df[selected_column_upper] != source_df[selected_column_upper]]
 
-                    # Submit button to update the source table and insert to the target table
-                    if st.button("Submit Updates"):
-                        try:
-                            # Identify rows that have been edited
-                            changed_rows = edited_df[edited_df[selected_column_upper] != source_df[selected_column_upper]]
+                        if not changed_rows.empty:
+                            # Capture current timestamp when updates are submitted
+                            last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                            if not changed_rows.empty:
-                                # Capture current timestamp when updates are submitted
-                                last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            for index, row in changed_rows.iterrows():
+                                # Extract primary key values
+                                primary_key_values = {col: row[col] for col in primary_key_cols}
 
-                                for index, row in changed_rows.iterrows():
-                                    # Extract primary key values
-                                    primary_key_values = {col: row[col] for col in primary_key_cols}
+                                # Get new value for the selected column
+                                new_value = row[selected_column_upper]
 
-                                    # Get new value for the selected column
-                                    new_value = row[selected_column_upper]
+                                # Update source table
+                                update_source_table_row(selected_table, primary_key_values, selected_column, new_value)
 
-                                    # Update source table
-                                    update_source_table_row(selected_table, primary_key_values, selected_column, new_value)
+                                # Prepare row data for insertion into target table
+                                row_data = row.to_dict()
 
-                                    # Prepare row data for insertion into target table
-                                    row_data = row.to_dict()
+                                # Insert into target table
+                                insert_into_target_table(target_table_name, row_data, selected_column, new_value)
 
-                                    # Insert into target table
-                                    insert_into_target_table(target_table_name, row_data, selected_column, new_value)
+                            st.success(f"Data updated successfully at {last_updated}!")
 
-                                st.success(f"Data updated successfully at {last_updated}!")
+                            # Update the caption to show the last updated timestamp
+                            st.session_state.last_updated = last_updated  # Store last update timestamp in session state
+                        else:
+                            st.info("No changes were made.")
+                    except Exception as e:
+                        st.error(f"Error during update/insert: {e}")
+            else:
+                st.info(f"No data available in {selected_table}.")
 
-                                # Update the caption to show the last updated timestamp
-                                st.session_state.last_updated = last_updated  # Store last update timestamp in session state
-                            else:
-                                st.info("No changes were made.")
-                        except Exception as e:
-                            st.error(f"Error during update/insert: {e}")
-                else:
-                    st.info(f"No data available in {selected_table}.")
+        with tab2:
+            st.subheader(f"Overridden Values from {target_table_name}")
 
-            with tab2:
-                st.subheader(f"Overridden Values from {target_table_name}")
-
-                # Fetch overridden data (ONLY the latest overrides)
-                override_df = fetch_data(target_table_name)
-                if not override_df.empty:
-                    st.dataframe(override_df, use_container_width=True)
-                else:
-                    st.info(f"No overridden data available in {target_table_name}.")
-        else:
-            st.warning("No table information found in Override_Ref for the selected table.")
-
+            # Fetch overridden data (ONLY the latest overrides)
+            override_df = fetch_data(target_table_name)
+            if not override_df.empty:
+                st.dataframe(override_df, use_container_width=True)
+            else:
+                st.info(f"No overridden data available in {target_table_name}.")
     else:
         st.warning("No tables found for the selected module in Override_Ref table.")
 
 
 # Footer (Dynamic with last updated time)
-    if 'last_updated' in st.session_state:
-        st.markdown("---")
-        st.caption(f"Portfolio Performance Override System - Last updated: {st.session_state.last_updated}")
-    else:
-        st.markdown("---")
-        st.caption("Portfolio Performance Override System - Last updated: Not yet updated")
-
-# Run the main function
-if __name__ == "__main__":
-    main()
+if 'last_updated' in st.session_state:
+    st.markdown("---")
+    st.caption(f"Portfolio Performance Override System - Last updated: {st.session_state.last_updated}")
+else:
+    st.markdown("---")
+    st.caption("Portfolio Performance Override System - Last updated: Not yet updated")
