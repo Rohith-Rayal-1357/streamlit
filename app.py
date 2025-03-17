@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from snowflake.snowpark.context import get_active_session
+from snowflake.snowpark import Session  # Correct import for the Session object
 from datetime import datetime
 
 # Page configuration
@@ -30,14 +30,6 @@ try:
 
 except Exception as e:
     st.error(f"❌ Failed to connect to Snowflake: {e}")
-    st.stop()
-
-# Establish Snowflake session
-# Since you're using get_active_session(), ensure you're running this in a Snowflake environment.
-session = get_active_session()
-
-if session is None:
-    st.error("Unable to establish a Snowflake session. Please ensure you are running this app within a Snowflake environment.")
     st.stop()
 
 # Function to fetch data based on the table name
