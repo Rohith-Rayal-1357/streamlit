@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from snowflake.snowpark import Session  # Correct import for the Session object
+from snowflake.snowpark import Session
 from datetime import datetime
 
 # Page configuration
@@ -50,8 +50,7 @@ def fetch_override_ref_data(selected_module=None):
 
         # Filter based on the selected module if provided
         if selected_module:
-            module_num = int(selected_module.split('-')[1])
-            df = df[df['MODULE'] == module_num]
+            df = df[df['MODULE'] == int(selected_module)]  # Use integer module number
         return df
     except Exception as e:
         st.error(f"Error fetching data from Override_Ref: {e}")
@@ -99,28 +98,25 @@ query_params = st.query_params
 
 # Check if the 'module' parameter exists in the URL
 if 'module' in query_params:
-    selected_module = query_params['module']  # Get the module from the URL
-    if isinstance(selected_module, list):
-        selected_module = selected_module[0]  # Get the first module if it's a list
+    selected_module = query_params['module'][0]  # Get the module from the URL
 else:
-    selected_module = None  # No module is selected, show all modules
+    selected_module = None  # No module is selected
 
-# List available modules - Dynamically populate from Override_Ref
-override_ref_df = fetch_data("Override_Ref")
-if not override_ref_df.empty:
-    module_numbers = sorted(override_ref_df['MODULE'].unique())
-    available_modules = [f"Module-{int(module)}" for module in module_numbers]
-else:
-    available_modules = []
-    st.warning("No modules found in Override_Ref table.")
+# Error handling: If no module is selected, display an error message and stop.
+if selected_module is None:
+    st.error("Please select a module from the Power BI report.")
+    st.stop()
 
-# If no module is selected, show all modules
-if not selected_module:
-    selected_module = st.selectbox("Select Module", available_modules, index=0)
+try:
+    selected_module = int(selected_module)  # Convert to integer
+except ValueError:
+    st.error("Invalid module number.  Please ensure the module number is an integer.")
+    st.stop()
+
 
 # If a module is selected, show its corresponding data
 if selected_module:
-    st.markdown(f"### **Selected Module: {selected_module}**")  # Show the selected module's name... # Get tables for the selected module
+    # Get tables for the selected module
     module_tables_df = fetch_override_ref_data(selected_module)
 
     if not module_tables_df.empty:
