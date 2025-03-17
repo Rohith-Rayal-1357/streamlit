@@ -123,8 +123,8 @@ if not module_tables_df.empty:
         # Fetch editable columns from table_info_df
         editable_columns = table_info_df['EDITABLE_COLUMN'].unique()
 
-        # Select editable column
-        selected_column = st.selectbox("Editable Column", editable_columns)
+        # Fixed selected editable column (no dropdown, always choose the first one)
+        selected_column = editable_columns[0]
         selected_column_upper = selected_column.upper()
 
         # Fetch primary key columns dynamically from source table
