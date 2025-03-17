@@ -123,7 +123,7 @@ if not module_tables_df.empty:
         # Fetch editable columns from table_info_df
         editable_columns = table_info_df['EDITABLE_COLUMN'].unique()
 
-        # Fixed selected editable column (no dropdown, always choose the first one)
+        # Select the first editable column (no dropdown, auto-select the first one)
         selected_column = editable_columns[0]
         selected_column_upper = selected_column.upper()
 
@@ -165,7 +165,6 @@ if not module_tables_df.empty:
 
                 styled_df = edited_df.style.apply(highlight_editable_column, column_name=selected_column_upper, axis=None)
 
-                # Here we disable the other columns except the selected one for editing
                 edited_df = st.data_editor(
                     edited_df,  # Pass the original dataframe for editing
                     key=f"data_editor_{selected_table}_{selected_column}",
@@ -174,17 +173,15 @@ if not module_tables_df.empty:
                     disabled=disabled_cols
                 )
 
-                # Submit button to update the source table and insert into the target table
+                # Submit button to update the source table and insert to the target table
                 if st.button("Submit Updates"):
                     try:
                         # Identify rows that have been edited
                         changed_rows = edited_df[edited_df[selected_column_upper] != source_df[selected_column_upper]]
 
                         if not changed_rows.empty:
-                            # Capture current timestamp when updates are submitted
-                            last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
                             for index, row in changed_rows.iterrows():
+
                                 # Extract primary key values
                                 primary_key_values = {col: row[col] for col in primary_key_cols}
 
@@ -200,12 +197,10 @@ if not module_tables_df.empty:
                                 # Insert into target table
                                 insert_into_target_table(target_table_name, row_data, selected_column, new_value)
 
-                            st.success(f"Data updated successfully at {last_updated}!")
-
-                            # Update the caption to show the last updated timestamp
-                            st.session_state.last_updated = last_updated  # Store last update timestamp in session state
+                            st.success("Data updated successfully!")
                         else:
                             st.info("No changes were made.")
+
                     except Exception as e:
                         st.error(f"Error during update/insert: {e}")
             else:
@@ -227,10 +222,6 @@ if not module_tables_df.empty:
 else:
     st.warning("No tables found for the selected module in Override_Ref table.")
 
-# Footer (Dynamic with last updated time)
-if 'last_updated' in st.session_state:
-    st.markdown("---")
-    st.caption(f"Portfolio Performance Override System • Last updated: {st.session_state.last_updated}")
-else:
-    st.markdown("---")
-    st.caption("Portfolio Performance Override System • Last updated: Not yet updated")
+# Footer
+st.markdown("---")
+st.caption("Portfolio Performance Override System • Last updated: March 12, 2025")
