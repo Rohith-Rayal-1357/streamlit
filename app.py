@@ -123,8 +123,6 @@ else:
     st.stop()
 
 # If a module is selected, show its corresponding data
-# Removed unnecessary if selected_module condition, as the app would have stopped if it wasn't selected
-# This ensures it continues to process data based on the valid module
 if not module_tables_df.empty:
     available_tables = module_tables_df['SOURCE_TABLE'].unique()
 
@@ -149,7 +147,7 @@ if not module_tables_df.empty:
             'fact_portfolio_perf': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
             'fact_income': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
             'fact_msme': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
-            'fact_orders': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT, 'CATEGORY'],
+            'fact_orders': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
             'fact_customers': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
         }.get(selected_table, [])
 
@@ -238,7 +236,6 @@ if not module_tables_df.empty:
                 st.info(f"No overridden data available in {target_table_name}.")
     else:
         st.warning("No tables found for the selected module in Override_Ref table.")
-
 
 # Footer (Dynamic with last updated time)
 if 'last_updated' in st.session_state:
