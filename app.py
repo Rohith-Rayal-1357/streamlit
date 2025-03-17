@@ -113,7 +113,7 @@ except ValueError:
     st.error("Invalid module number.  Please ensure the module number is an integer.")
     st.stop()
 
-# Fetch the module name
+# Fetch the module tables based on the selected module
 module_tables_df = fetch_override_ref_data(selected_module)
 if not module_tables_df.empty:
     module_name = module_tables_df['MODULE_NAME'].iloc[0]
@@ -122,27 +122,26 @@ else:
     st.error("Could not retrieve module name. Please check the Override_Ref table.")
     st.stop()
 
-# If a module is selected, show its corresponding data
+# Show tables for the selected module
 if not module_tables_df.empty:
     available_tables = module_tables_df['SOURCE_TABLE'].unique()
 
     # Select table within the module
     selected_table = st.selectbox("Select Table", available_tables)
 
-    # Filter Override_Ref data based on the selected table
+    # Filter the data to the selected table
     table_info_df = module_tables_df[module_tables_df['SOURCE_TABLE'] == selected_table]
 
     if not table_info_df.empty:
         target_table_name = table_info_df['TARGET_TABLE'].iloc[0]
-        # Fetch editable columns from table_info_df
         editable_columns = table_info_df['EDITABLE_COLUMN'].unique()
 
-        # Select editable column
+        # Select the editable column
         selected_column = st.selectbox("Editable Column", editable_columns, disabled=True)
         st.markdown(f"### **Editable Column:** {selected_column.upper()}")  # Disabled selectbox
         selected_column_upper = selected_column.upper()
 
-        # Fetch primary key columns dynamically from source table
+        # Fetch primary key columns dynamically from the source table
         primary_key_cols = {
             'fact_portfolio_perf': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
             'fact_income': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
@@ -188,7 +187,7 @@ if not module_tables_df.empty:
                     disabled=disabled_cols
                 )
 
-                # Submit button to update the source table and insert to the target table
+                # Submit button to update the source table and insert into the target table
                 if st.button("Submit Updates"):
                     try:
                         # Identify rows that have been edited
