@@ -95,17 +95,32 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
 
 # Main app logic
 # Retrieve the query parameters using the correct method
-query_params = st.experimental_get_query_params()
+query_params = st.query_params
 
 # Check if the 'module' parameter exists in the URL
 if 'module' in query_params:
-    selected_module = query_params['module'][0]  # Get the module from the URL
+    selected_module = query_params['module']  # Get the module from the URL
+    if isinstance(selected_module, list):
+        selected_module = selected_module[0]  # Get the first module if it's a list
 else:
     selected_module = None  # No module is selected, show all modules
 
-# If a module is selected, display the tables for that module
+# List available modules - Dynamically populate from Override_Ref
+override_ref_df = fetch_data("Override_Ref")
+if not override_ref_df.empty:
+    module_numbers = sorted(override_ref_df['MODULE'].unique())
+    available_modules = [f"Module-{int(module)}" for module in module_numbers]
+else:
+    available_modules = []
+    st.warning("No modules found in Override_Ref table.")
+
+# If no module is selected, show all modules
+if not selected_module:
+    selected_module = st.selectbox("Select Module", available_modules, index=0)
+
+# If a module is selected, show its corresponding data
 if selected_module:
-    # Fetch tables for the selected module
+    st.markdown(f"### **Selected Module: {selected_module}**")  # Show the selected module's name... # Get tables for the selected module
     module_tables_df = fetch_override_ref_data(selected_module)
 
     if not module_tables_df.empty:
