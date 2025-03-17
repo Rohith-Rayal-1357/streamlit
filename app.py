@@ -180,8 +180,10 @@ if not module_tables_df.empty:
                         changed_rows = edited_df[edited_df[selected_column_upper] != source_df[selected_column_upper]]
 
                         if not changed_rows.empty:
-                            for index, row in changed_rows.iterrows():
+                            # Capture current timestamp when updates are submitted
+                            last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+                            for index, row in changed_rows.iterrows():
                                 # Extract primary key values
                                 primary_key_values = {col: row[col] for col in primary_key_cols}
 
@@ -197,10 +199,12 @@ if not module_tables_df.empty:
                                 # Insert into target table
                                 insert_into_target_table(target_table_name, row_data, selected_column, new_value)
 
-                            st.success("Data updated successfully!")
+                            st.success(f"Data updated successfully at {last_updated}!")
+
+                            # Update the caption to show the last updated timestamp
+                            st.session_state.last_updated = last_updated  # Store last update timestamp in session state
                         else:
                             st.info("No changes were made.")
-
                     except Exception as e:
                         st.error(f"Error during update/insert: {e}")
             else:
@@ -222,6 +226,10 @@ if not module_tables_df.empty:
 else:
     st.warning("No tables found for the selected module in Override_Ref table.")
 
-# Footer
-st.markdown("---")
-st.caption("Portfolio Performance Override System • Last updated: March 12, 2025")
+# Footer (Dynamic with last updated time)
+if 'last_updated' in st.session_state:
+    st.markdown("---")
+    st.caption(f"Portfolio Performance Override System • Last updated: {st.session_state.last_updated}")
+else:
+    st.markdown("---")
+    st.caption("Portfolio Performance Override System • Last updated: Not yet updated")
