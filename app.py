@@ -113,11 +113,18 @@ except ValueError:
     st.error("Invalid module number.  Please ensure the module number is an integer.")
     st.stop()
 
+# Fetch the module name
+module_tables_df = fetch_override_ref_data(selected_module)
+if not module_tables_df.empty:
+    module_name = module_tables_df['MODULE_NAME'].iloc[0]
+    st.markdown(f"<h3 style='text-align: center;'>Module: {module_name}</h3>", unsafe_allow_html=True)
+else:
+    st.error("Could not retrieve module name. Please check the Override_Ref table.")
+    st.stop()
 
 # If a module is selected, show its corresponding data
 if selected_module:
     # Get tables for the selected module
-    module_tables_df = fetch_override_ref_data(selected_module)
 
     if not module_tables_df.empty:
         available_tables = module_tables_df['SOURCE_TABLE'].unique()
