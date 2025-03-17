@@ -117,7 +117,7 @@ except ValueError:
 module_tables_df = fetch_override_ref_data(selected_module)
 if not module_tables_df.empty:
     module_name = module_tables_df['MODULE_NAME'].iloc[0]
-    st.markdown(f"<h3 style='text-align: center;'>Module: {module_name}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='text-align: center;'>{module_name}</h3>", unsafe_allow_html=True)
 else:
     st.error("Could not retrieve module name. Please check the Override_Ref table.")
     st.stop()
