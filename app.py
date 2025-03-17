@@ -28,6 +28,7 @@ except KeyError as e:
     st.stop()
 
 # Establish Snowflake session
+# Since you're using get_active_session(), ensure you're running this in a Snowflake environment.
 session = get_active_session()
 
 if session is None:
@@ -72,6 +73,7 @@ def update_source_table_row(source_table, primary_key_values, editable_column, n
 
         # Execute the UPDATE statement
         session.sql(update_sql).collect()
+        st.success(f"Successfully updated row in {source_table} where {where_clause}")
 
     except Exception as e:
         st.error(f"Error updating row in {source_table}: {e}")
@@ -89,6 +91,7 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
         """
 
         session.sql(insert_sql).collect()
+        st.success(f"Successfully inserted data to table {target_table} with RECORD_FLAG = 'O'")
 
     except Exception as e:
         st.error(f"Error inserting values into {target_table}: {e}")
@@ -124,22 +127,19 @@ if not module_tables_df.empty:
         editable_columns = table_info_df['EDITABLE_COLUMN'].unique()
 
         # Select editable column
-        selected_column = st.selectbox("Editable_column", editable_columns)
+        selected_column = st.selectbox("Editable Column", editable_columns)
         selected_column_upper = selected_column.upper()
 
         # Fetch primary key columns dynamically from source table
-        primary_key_cols = []
-        if selected_table == 'fact_portfolio_perf':
-            primary_key_cols = ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
-        elif selected_table == 'fact_income':
-            primary_key_cols = ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
-        elif selected_table == 'fact_msme':
-            primary_key_cols = ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
-        elif selected_table == 'fact_orders':
-            primary_key_cols = ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
-        elif selected_table == 'fact_customers':
-            primary_key_cols = ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
-        else:
+        primary_key_cols = {
+            'fact_portfolio_perf': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
+            'fact_income': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
+            'fact_msme': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
+            'fact_orders': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY'],
+            'fact_customers': ['AS_OF_DATE', 'PORTFOLIO', 'PORTFOLIO_SEGMENT', 'CATEGORY']
+        }.get(selected_table, [])
+
+        if not primary_key_cols:
             st.error("Primary key columns not defined for this table. Please update the code.")
             st.stop()
 
@@ -160,7 +160,7 @@ if not module_tables_df.empty:
                     # Create a style for the entire dataframe
                     styled_df = pd.DataFrame('', index=df.index, columns=df.columns)
                     # Apply yellow background only to the selected column
-                    styled_df[column_name] = 'background-color: #FFFFE00'
+                    styled_df[column_name] = 'background-color: #FFFFE0'
                     return styled_df
 
                 # Disable editing for all columns except the selected editable column
@@ -169,7 +169,7 @@ if not module_tables_df.empty:
                 styled_df = edited_df.style.apply(highlight_editable_column, column_name=selected_column_upper, axis=None)
 
                 edited_df = st.data_editor(
-                    styled_df,  # Pass the styled dataframe
+                    edited_df,  # Pass the original dataframe for editing
                     key=f"data_editor_{selected_table}_{selected_column}",
                     num_rows="dynamic",
                     use_container_width=True,
@@ -184,6 +184,7 @@ if not module_tables_df.empty:
 
                         if not changed_rows.empty:
                             for index, row in changed_rows.iterrows():
+
                                 # Extract primary key values
                                 primary_key_values = {col: row[col] for col in primary_key_cols}
 
@@ -223,3 +224,7 @@ if not module_tables_df.empty:
 
 else:
     st.warning("No tables found for the selected module in Override_Ref table.")
+
+# Footer
+st.markdown("---")
+st.caption("Portfolio Performance Override System • Last updated: March 12, 2025")
