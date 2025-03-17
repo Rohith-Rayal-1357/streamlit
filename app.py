@@ -7,44 +7,31 @@ from datetime import datetime
 st.set_page_config(
     page_title="Editable Data Override App",
     page_icon="📊",
-    layout="centered"  # Set the layout to centered
+    layout="wide"
 )
 
 # Title with custom styling
 st.markdown("<h1 style='text-align: center; color: #1E88E5;'>Override Dashboard</h1>", unsafe_allow_html=True)
 
-# Custom CSS to highlight the editable column
-st.markdown(
-    """
-    <style>
-        .highlight-editable {
-            background-color: #FFF3CD !important;  /* Light yellow background */
-            font-weight: bold;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# Streamlit Secrets to fetch Snowflake connection parameters
+# Retrieve Snowflake credentials from Streamlit secrets
 try:
-    connection_parameters = {
-        "account": st.secrets["snowflake"]["account"],
-        "user": st.secrets["snowflake"]["user"],
-        "password": st.secrets["snowflake"]["password"],
-        "warehouse": st.secrets["snowflake"]["warehouse"],
-        "database": st.secrets["snowflake"]["database"],
-        "schema": st.secrets["snowflake"]["schema"],
-    }
-
-    # Get active Snowflake session using the connection parameters
-    session = get_active_session()
-    if session is None:
-        st.error("Unable to establish a Snowflake session. Please ensure you are running this app within a Snowflake environment.")
-        st.stop()
-
-except Exception as e:
+    snowflake_config = st.secrets["snowflake"]
+    account = snowflake_config["account"]
+    user = snowflake_config["user"]
+    password = snowflake_config["password"]
+    warehouse = snowflake_config["warehouse"]
+    database = snowflake_config["database"]
+    schema = snowflake_config["schema"]
+    st.success("✅ Successfully retrieved Snowflake credentials from secrets.")
+except KeyError as e:
     st.error(f"❌ Failed to retrieve Snowflake connection details from secrets: {e}")
+    st.stop()
+
+# Establish Snowflake session
+session = get_active_session()
+
+if session is None:
+    st.error("Unable to establish a Snowflake session. Please ensure you are running this app within a Snowflake environment.")
     st.stop()
 
 # Function to fetch data based on the table name
@@ -102,6 +89,7 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
         """
 
         session.sql(insert_sql).collect()
+
     except Exception as e:
         st.error(f"Error inserting values into {target_table}: {e}")
 
@@ -136,7 +124,7 @@ if not module_tables_df.empty:
         editable_columns = table_info_df['EDITABLE_COLUMN'].unique()
 
         # Select editable column
-        selected_column = st.selectbox("Editable Column", editable_columns)
+        selected_column = st.selectbox("Editable_column", editable_columns)
         selected_column_upper = selected_column.upper()
 
         # Fetch primary key columns dynamically from source table
@@ -168,7 +156,6 @@ if not module_tables_df.empty:
                 edited_df = source_df.copy()
 
                 # Apply a background color to the editable column
-
                 def highlight_editable_column(df, column_name):
                     # Create a style for the entire dataframe
                     styled_df = pd.DataFrame('', index=df.index, columns=df.columns)
@@ -182,7 +169,7 @@ if not module_tables_df.empty:
                 styled_df = edited_df.style.apply(highlight_editable_column, column_name=selected_column_upper, axis=None)
 
                 edited_df = st.data_editor(
-                    styled_df, # Pass the styled dataframe
+                    styled_df,  # Pass the styled dataframe
                     key=f"data_editor_{selected_table}_{selected_column}",
                     num_rows="dynamic",
                     use_container_width=True,
@@ -197,7 +184,6 @@ if not module_tables_df.empty:
 
                         if not changed_rows.empty:
                             for index, row in changed_rows.iterrows():
-
                                 # Extract primary key values
                                 primary_key_values = {col: row[col] for col in primary_key_cols}
 
