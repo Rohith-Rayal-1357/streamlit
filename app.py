@@ -7,7 +7,7 @@ from datetime import datetime
 st.set_page_config(
     page_title="Editable Data Override App",
     page_icon="📊",
-    layout="centered"
+    layout="wide"
 )
 
 # Title with custom styling
@@ -163,9 +163,9 @@ if not module_tables_df.empty:
                 # Disable editing for all columns except the selected editable column
                 disabled_cols = [col for col in edited_df.columns if col != selected_column_upper]
 
-                # Show the dataframe, allowing only the editable column to be edited
                 styled_df = edited_df.style.apply(highlight_editable_column, column_name=selected_column_upper, axis=None)
 
+                # Here we disable the other columns except the selected one for editing
                 edited_df = st.data_editor(
                     edited_df,  # Pass the original dataframe for editing
                     key=f"data_editor_{selected_table}_{selected_column}",
