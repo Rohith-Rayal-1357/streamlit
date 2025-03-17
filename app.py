@@ -94,10 +94,6 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
         st.error(f"Error inserting values into {target_table}: {e}")
 
 # Main app
-# Fetch query params to check if a module is specified
-params = st.query_params()
-specific_module = params.get("module", [None])[0]  # Check if "module" is passed in the query params
-
 # List available modules - Dynamically populate from Override_Ref
 override_ref_df = fetch_data("Override_Ref")
 if not override_ref_df.empty:
@@ -107,11 +103,8 @@ else:
     available_modules = []
     st.warning("No modules found in Override_Ref table.")
 
-# If a specific module is passed via query params, only show that module
-if specific_module and specific_module in available_modules:
-    selected_module = specific_module
-else:
-    selected_module = st.selectbox("Select Module", available_modules, index=0)
+# Select module (Display all modules by default)
+selected_module = st.selectbox("Select Module", available_modules, index=0)
 
 # If a module is selected, show its corresponding data
 if selected_module:
