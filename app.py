@@ -92,41 +92,36 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
     except Exception as e:
         st.error(f"Error inserting values into {target_table}: {e}")
 
+
 # Main app logic
-# Retrieve the query parameters using the correct method
-query_params = st.query_params
+def main():
+    # Retrieve the query parameters using the correct method
+    query_params = st.query_params
 
-# Check if the 'module' parameter exists in the URL
-if 'module' in query_params:
-    selected_module = query_params['module'][0]  # Get the module from the URL
-else:
-    selected_module = None  # No module is selected
+    # Check if the 'module' parameter exists in the URL
+    if 'module' in query_params:
+        selected_module = query_params['module'][0]  # Get the module from the URL
+    else:
+        selected_module = None  # No module is selected
 
-# Error handling: If no module is selected, display an error message and stop.
-if selected_module is None:
-    st.error("Please select a module from the Power BI report.")
-    st.stop()
+    # Error handling: If no module is selected, display an error message and stop.
+    if selected_module is None:
+        st.error("Please select a module from the Power BI report.")
+        st.stop()
 
-try:
-    selected_module = int(selected_module)  # Convert to integer
-except ValueError:
-    st.error("Invalid module number.  Please ensure the module number is an integer.")
-    st.stop()
+    try:
+        selected_module = int(selected_module)  # Convert to integer
+    except ValueError:
+        st.error("Invalid module number. Please ensure the module number is an integer.")
+        st.stop()
 
-# Fetch the module name
-module_tables_df = fetch_override_ref_data(selected_module)
-if not module_tables_df.empty:
-    module_name = module_tables_df['MODULE_NAME'].iloc[0]
-    st.markdown(f"<h3 style='text-align: center;'>Module: {module_name}</h3>", unsafe_allow_html=True)
-else:
-    st.error("Could not retrieve module name. Please check the Override_Ref table.")
-    st.stop()
-
-# If a module is selected, show its corresponding data
-if selected_module:
-    # Get tables for the selected module
+    # Fetch the module name AND TABLES every time the module changes
+    module_tables_df = fetch_override_ref_data(selected_module)
 
     if not module_tables_df.empty:
+        module_name = module_tables_df['MODULE_NAME'].iloc[0]
+        st.markdown(f"<h3 style='text-align: center;'>Module: {module_name}</h3>", unsafe_allow_html=True)
+
         available_tables = module_tables_df['SOURCE_TABLE'].unique()
 
         # Select table within the module
@@ -243,10 +238,15 @@ if selected_module:
     else:
         st.warning("No tables found for the selected module in Override_Ref table.")
 
+
 # Footer (Dynamic with last updated time)
-if 'last_updated' in st.session_state:
-    st.markdown("---")
-    st.caption(f"Portfolio Performance Override System • Last updated: {st.session_state.last_updated}")
-else:
-    st.markdown("---")
-    st.caption("Portfolio Performance Override System • Last updated: Not yet updated")
+    if 'last_updated' in st.session_state:
+        st.markdown("---")
+        st.caption(f"Portfolio Performance Override System - Last updated: {st.session_state.last_updated}")
+    else:
+        st.markdown("---")
+        st.caption("Portfolio Performance Override System - Last updated: Not yet updated")
+
+# Run the main function
+if __name__ == "__main__":
+    main()
