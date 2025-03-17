@@ -95,11 +95,13 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
 
 # Main app logic
 # Retrieve the query parameters using the correct method
-query_params = st.experimental_get_query_params()
+query_params = st.query_params
 
 # Check if the 'module' parameter exists in the URL
 if 'module' in query_params:
-    selected_module = query_params['module'][0]  # Get the module from the URL
+    selected_module = query_params['module']  # Get the module from the URL
+    if isinstance(selected_module, list):
+        selected_module = selected_module[0]  # Get the first module if it's a list
 else:
     selected_module = None  # No module is selected, show all modules
 
@@ -118,9 +120,7 @@ if not selected_module:
 
 # If a module is selected, show its corresponding data
 if selected_module:
-    st.markdown(f"### **Selected Module: {selected_module}**")  # Show the selected module's name
-
-    # Get tables for the selected module
+    st.markdown(f"### **Selected Module: {selected_module}**")  # Show the selected module's name... # Get tables for the selected module
     module_tables_df = fetch_override_ref_data(selected_module)
 
     if not module_tables_df.empty:
