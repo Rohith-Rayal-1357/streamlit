@@ -216,12 +216,9 @@ if not module_tables_df.empty:
                                 insert_into_target_table(target_table_name, row_data, selected_column, new_value)
 
                             # Store the last updated timestamp in session state
-                            st.session_state.last_updated = last_updated
+                            st.session_state.last_updated_display = last_updated
 
                             st.success(f"Data updated successfully at {last_updated}!")
-
-                            # Optionally, show the timestamp immediately after updating
-                            st.session_state.last_updated_display = last_updated
 
                         else:
                             st.info("No changes were made.")
@@ -245,7 +242,7 @@ if not module_tables_df.empty:
 # Footer (Dynamic with last updated time)
 if 'last_updated_display' in st.session_state:
     st.markdown("---")
-    st.caption(f"Portfolio Performance Override System - Last updated: {st.session_state.last_updated_display}")
+    st.caption(f"Portfolio Performance Override System • Last updated: {st.session_state.last_updated_display}")
 else:
     st.markdown("---")
-    st.caption("Portfolio Performance Override System - Last updated: Not yet updated")
+    st.caption("Portfolio Performance Override System • Last updated: No updates yet")
