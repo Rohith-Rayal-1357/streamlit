@@ -97,10 +97,7 @@ def insert_into_target_table(target_table, row_data, editable_column, new_value)
 query_params = st.query_params
 
 # Check if the 'module' parameter exists in the URL
-if 'module' in query_params:
-    selected_module = query_params['module'][0]  # Get the module from the URL
-else:
-    selected_module = None  # No module is selected
+selected_module = query_params.get("module", [None])[0]  # Get the module from the URL
 
 # Error handling: If no module is selected, display an error message and stop.
 if selected_module is None:
