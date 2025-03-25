@@ -215,10 +215,14 @@ if not module_tables_df.empty:
                                 # Insert into target table
                                 insert_into_target_table(target_table_name, row_data, selected_column, new_value)
 
+                            # Store the last updated timestamp in session state
+                            st.session_state.last_updated = last_updated
+
                             st.success(f"Data updated successfully at {last_updated}!")
 
-                            # Update the caption to show the last updated timestamp
-                            st.session_state.last_updated = last_updated  # Store last update timestamp in session state
+                            # Optionally, show the timestamp immediately after updating
+                            st.session_state.last_updated_display = last_updated
+
                         else:
                             st.info("No changes were made.")
                     except Exception as e:
@@ -239,9 +243,9 @@ if not module_tables_df.empty:
         st.warning("No tables found for the selected module in Override_Ref table.")
 
 # Footer (Dynamic with last updated time)
-if 'last_updated' in st.session_state:
+if 'last_updated_display' in st.session_state:
     st.markdown("---")
-    st.caption(f"Portfolio Performance Override System - Last updated: {st.session_state.last_updated}")
+    st.caption(f"Portfolio Performance Override System - Last updated: {st.session_state.last_updated_display}")
 else:
     st.markdown("---")
     st.caption("Portfolio Performance Override System - Last updated: Not yet updated")
